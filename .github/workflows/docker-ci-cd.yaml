@@ -8,6 +8,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: sadique-khan/devops-0
+  CODESPACE_NAME: reimagined-memory-vwx6g5rx759fxvww
 
 jobs:
   build-and-push:
@@ -15,6 +16,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -36,28 +38,19 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
-  deploy-codespace:
+  deploy-to-codespace:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy inside Codespace
+      - name: SSH into Codespace and Run Container
         env:
           GH_TOKEN: ${{ secrets.GH_CODESPACE_TOKEN }}
         run: |
-          # 1. Find the name of the active codespace for this repo
-          CODESPACE_NAME=$(gh codespace list --repo ${{ github.repository }} --json name -q '.[0].name')
-          
-          if [ -z "$CODESPACE_NAME" ] || [ "$CODESPACE_NAME" = "null" ]; then
-            echo "No running Codespace found for this repository. Skipping deployment."
-            exit 0
-          fi
+          echo "Connecting to Codespace: ${{ env.CODESPACE_NAME }}"
 
-          echo "Deploying to active codespace: $CODESPACE_NAME"
-
-          # 2. Execute docker redeploy commands inside the codespace via SSH
-          gh codespace ssh -c "$CODESPACE_NAME" -- "
-            docker pull ghcr.io/${{ env.IMAGE_NAME }}:latest && \
-            docker stop my-app || true && \
-            docker rm my-app || true && \
-            docker run -d --name my-app -p 3000:3000 ghcr.io/${{ env.IMAGE_NAME }}:latest
+          gh codespace ssh -c "${{ env.CODESPACE_NAME }}" -- "
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest && \
+            docker stop my-app 2>/dev/null || true && \
+            docker rm my-app 2>/dev/null || true && \
+            docker run -d --name my-app -p 3000:3000 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           "
