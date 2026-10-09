@@ -4,7 +4,7 @@ export async function GET() {
     return NextResponse.json(
         {
             text:"hello World",
-            anothertext:"updated responce"
+            anothertext:"testing ci/cd"
         }
     );
 }
